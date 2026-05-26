@@ -1,0 +1,12 @@
+{
+  "name": "agent-base",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node loop.js"
+  },
+  "dependencies": {
+    "ioredis": "^5.4.1"
+  }
+}

@@ -1,0 +1,5 @@
+.env
+node_modules/
+session/*/
+!session/.gitkeep
+.DS_Store

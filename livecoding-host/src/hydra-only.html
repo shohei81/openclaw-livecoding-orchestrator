@@ -1,0 +1,50 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>hydra-only</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #000; }
+  #c { position: fixed; inset: 0; }
+  #log { position: fixed; top: 8px; left: 8px; color: #0f0;
+    background: rgba(0,0,0,0.7); padding: 6px 10px; font: 12px monospace; z-index: 10; }
+</style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div id="log">loading…</div>
+  <script src="https://unpkg.com/hydra-synth@1.3.29/dist/hydra-synth.js"></script>
+  <script>
+    const log = document.getElementById('log');
+    const c = document.getElementById('c');
+    c.width = window.innerWidth;
+    c.height = window.innerHeight;
+
+    function report(s) { log.textContent = s; console.log(s); }
+
+    document.body.addEventListener('click', async () => {
+      try {
+        const h = new Hydra({canvas: c, detectAudio: false, autoLoop: true});
+        h.eval("osc(60, 0.1, 1.5).out(o0)");
+        report("hydra constructed + osc.out(o0) called. waiting 800ms…");
+        await new Promise(r => setTimeout(r, 800));
+        const gl = h.regl._gl;
+        const buf = new Uint8Array(4);
+        gl.readPixels(c.width/2, c.height/2, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+        const px = Array.from(buf);
+        report(`center pixel: [${px.join(", ")}]  (visible?: look at the screen)`);
+        await fetch('/diag', {
+          method: 'POST',
+          headers: {'content-type': 'application/json'},
+          body: JSON.stringify({label: 'hydra-only', centerPx: px, ua: navigator.userAgent})
+        });
+      } catch (e) {
+        report("error: " + e.message);
+        console.error(e);
+      }
+    }, {once: true});
+
+    report("loaded. CLICK anywhere to start hydra.");
+  </script>
+</body>
+</html>

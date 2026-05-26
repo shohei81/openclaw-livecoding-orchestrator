@@ -1,0 +1,55 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>hydra + strudel</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #000; }
+  #c { position: fixed; inset: 0; }
+  #log { position: fixed; top: 8px; left: 8px; color: #0f0;
+    background: rgba(0,0,0,0.7); padding: 6px 10px; font: 12px monospace; z-index: 10; max-width: 80vw; }
+</style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div id="log">loading…</div>
+  <script src="https://unpkg.com/hydra-synth@1.3.29/dist/hydra-synth.js"></script>
+  <script type="module">
+    import { initStrudel, evaluate, samples } from "https://cdn.jsdelivr.net/npm/@strudel/web@1.3.0/dist/index.mjs";
+    const log = document.getElementById('log');
+    const c = document.getElementById('c');
+    c.width = window.innerWidth;
+    c.height = window.innerHeight;
+    function report(s) { log.textContent = s; console.log(s); }
+
+    // Init Strudel FIRST (mirrors our main page order).
+    report("init strudel…");
+    await initStrudel({
+      prebake: async () => { await samples("github:tidalcycles/dirt-samples"); },
+    });
+    report("strudel ready. CLICK anywhere to start hydra.");
+
+    document.body.addEventListener('click', async () => {
+      try {
+        const h = new Hydra({canvas: c, detectAudio: false, autoLoop: true});
+        h.eval("osc(60, 0.1, 1.5).out(o0)");
+        report("hydra constructed. waiting 800ms…");
+        await new Promise(r => setTimeout(r, 800));
+        const gl = h.regl._gl;
+        const buf = new Uint8Array(4);
+        gl.readPixels(c.width/2, c.height/2, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+        const px = Array.from(buf);
+        report(`center pixel: [${px.join(", ")}]  — visible?`);
+        await fetch('/diag', {
+          method: 'POST',
+          headers: {'content-type': 'application/json'},
+          body: JSON.stringify({label: 'hydra+strudel', centerPx: px})
+        });
+      } catch (e) {
+        report("error: " + e.message);
+        console.error(e);
+      }
+    }, {once: true});
+  </script>
+</body>
+</html>
