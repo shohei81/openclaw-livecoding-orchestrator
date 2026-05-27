@@ -49,8 +49,9 @@ sub.on("message", async (channel, raw) => {
   if (channel === "bar.tick") {
     const bar = Number(msg.bar) || 0;
     if (bar % editEvery !== phase) return;
-    if (busy) return;
+    if (busy) { console.log(`[${AGENT_ID}] bar=${bar} skipped (busy)`); return; }
     busy = true;
+    console.log(`[${AGENT_ID}] bar=${bar} cycle starting`);
     try {
       await cycle(bar);
     } catch (e) {
@@ -63,7 +64,10 @@ sub.on("message", async (channel, raw) => {
 
 async function cycle(bar) {
   const message = buildPromptMessage(bar);
+  console.log(`[${AGENT_ID}] bar=${bar} invoking openclaw agent (msg ${message.length} chars)`);
+  const t0 = Date.now();
   const raw = await runOpenClawAgent(message);
+  console.log(`[${AGENT_ID}] bar=${bar} openclaw returned in ${Date.now()-t0}ms (${raw.length} chars)`);
   const code = extractCode(raw);
 
   const v = await fetch(`${VALIDATOR_URL}/validate`, {
@@ -100,15 +104,21 @@ function buildPromptMessage(bar) {
     `bar: ${bar}`,
     peerLines ? `other agents currently playing:\n${peerLines}` : "no other agents yet",
     self,
-    `Write the next iteration of your part as ONE ${AGENT_ROLE === "hydra" ? "Hydra" : "Strudel"} expression. Output ONLY the code — no prose, no markdown.`,
+    `Write the next iteration of your part as ONE ${AGENT_ROLE === "hydra" ? "Hydra" : "Strudel"} expression. Output ONLY the code as ONE LINE. Do not write any prose, planning, reasoning, or explanation. No <thinking> blocks. No markdown. Just the raw single-line expression.`,
   ].join("\n\n");
 }
 
 function runOpenClawAgent(message) {
   return new Promise((resolve, reject) => {
+    // Pin a stable --session-key so OpenClaw doesn't try to resolve "current"
+    // (which fails with "No session found: current" when no channel sent a
+    // message recently). The same key is reused across cycles so the agent
+    // accumulates session memory of its previous patterns.
+    const sessionKey = `agent:${OPENCLAW_AGENT_ID}:livecoding-${SESSION_ID}`;
     const args = [
       "agent",
       "--agent", OPENCLAW_AGENT_ID,
+      "--session-key", sessionKey,
       "--thinking", OPENCLAW_THINKING,
       "--message", message,
     ];
@@ -132,11 +142,77 @@ function runOpenClawAgent(message) {
   });
 }
 
+// Gemini 2.5 Flash often emits prose with the code appended to the final
+// sentence WITHOUT a newline (e.g. "...slower lead.note(\"a2\")..."), AND a
+// fully-formed expression contains nested calls (noise(...) inside
+// modulate(...)). Both naive line-splitting and "last top-token" pick the
+// wrong piece. Strategy: scan all top-token starts at word boundary, build
+// the full balanced-paren expression (plus any chained .method(...) calls)
+// at each, and pick the LONGEST valid candidate. The longest match in a
+// noisy response is almost always the outermost code expression.
+const TOP_TOKEN_RE =
+  /\b(?:stack|cat|seq|note|n|s|freq|osc|noise|voronoi|shape|gradient|solid|src|silence)\b/g;
+
+function readBalancedExpr(s, start) {
+  // Expect ident, then optional `(...)`, then any number of `.ident(...)` chains.
+  let i = start;
+  while (i < s.length && /[\w$]/.test(s[i])) i++;
+  if (s[i] !== "(") return null;
+  let depth = 0;
+  for (; i < s.length; i++) {
+    const c = s[i];
+    if (c === "(") depth++;
+    else if (c === ")") {
+      depth--;
+      if (depth === 0) { i++; break; }
+    } else if (c === '"' || c === "'" || c === "`") {
+      const q = c;
+      i++;
+      while (i < s.length && s[i] !== q) {
+        if (s[i] === "\\") i++;
+        i++;
+      }
+    } else if (c === "\n") return null; // expression broke before closing
+  }
+  if (depth !== 0) return null;
+  // Chained calls: .method(...)
+  while (s[i] === "." && /[A-Za-z_$]/.test(s[i + 1] || "")) {
+    let j = i + 1;
+    while (j < s.length && /[\w$]/.test(s[j])) j++;
+    if (s[j] !== "(") break;
+    let d = 0;
+    for (; j < s.length; j++) {
+      const c = s[j];
+      if (c === "(") d++;
+      else if (c === ")") {
+        d--;
+        if (d === 0) { j++; break; }
+      } else if (c === '"' || c === "'" || c === "`") {
+        const q = c;
+        j++;
+        while (j < s.length && s[j] !== q) {
+          if (s[j] === "\\") j++;
+          j++;
+        }
+      } else if (c === "\n") return null;
+    }
+    if (d !== 0) return null;
+    i = j;
+  }
+  return s.slice(start, i);
+}
+
 function extractCode(raw) {
   let s = raw.trim();
   const fence = s.match(/```(?:[a-zA-Z0-9_+\-]*)\s*([\s\S]*?)```/);
-  if (fence) s = fence[1];
-  return s.trim();
+  if (fence) s = fence[1].trim();
+
+  let best = null;
+  for (const m of s.matchAll(TOP_TOKEN_RE)) {
+    const expr = readBalancedExpr(s, m.index);
+    if (expr && (!best || expr.length > best.length)) best = expr;
+  }
+  return (best || s).trim();
 }
 
 async function writeSessionFile(code) {

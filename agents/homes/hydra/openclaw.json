@@ -2,51 +2,19 @@
   "agents": {
     "defaults": {
       "workspace": "/workspace",
-      "model": {
-        "primary": "nvidia/meta/llama-3.3-70b-instruct"
-      },
-      "models": {
-        "nvidia/meta/llama-3.3-70b-instruct": {}
-      },
+      "model": { "primary": "google/gemini-2.5-flash" },
+      "models": { "google/gemini-2.5-flash": {} },
       "skipBootstrap": true
     },
     "list": [
-      {
-        "id": "main",
-        "identity": {
-          "name": "Hydra",
-          "theme": "Hydra visuals agent",
-          "emoji": "\ud83c\udf00"
-        }
-      }
+      { "id": "main", "identity": { "name": "Hydra", "theme": "Hydra visuals agent", "emoji": "🌀" } }
     ]
-  },
-  "models": {
-    "providers": {
-      "nvidia": {
-        "models": [
-          {
-            "id": "meta/llama-3.3-70b-instruct",
-            "name": "Llama 3.3 70B Instruct"
-          }
-        ],
-        "baseUrl": "https://integrate.api.nvidia.com/v1",
-        "api": "openai-completions"
-      }
-    }
   },
   "gateway": {
     "mode": "local",
     "bind": "loopback",
-    "auth": {
-      "mode": "token",
-      "token": "6ce938d99299b384ac103f7b2de63911bc6aa126ea5dcf696910d61ad98fd11c"
-    },
-    "remote": {
-      "token": "6ce938d99299b384ac103f7b2de63911bc6aa126ea5dcf696910d61ad98fd11c"
-    }
+    "auth": { "mode": "token", "token": "6ce938d99299b384ac103f7b2de63911bc6aa126ea5dcf696910d61ad98fd11c" },
+    "remote": { "token": "6ce938d99299b384ac103f7b2de63911bc6aa126ea5dcf696910d61ad98fd11c" }
   },
-  "messages": {
-    "visibleReplies": "automatic"
-  }
+  "messages": { "visibleReplies": "automatic" }
 }

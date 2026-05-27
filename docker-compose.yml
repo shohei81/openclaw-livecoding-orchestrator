@@ -13,6 +13,7 @@ x-agent: &agent
     SESSION_DIR: /session
     NVIDIA_API_KEY: ${NVIDIA_API_KEY}
     NVIDIA_BASE_URL: ${NVIDIA_BASE_URL:-https://integrate.api.nvidia.com/v1}
+    GEMINI_API_KEY: ${GEMINI_API_KEY}
     EDIT_EVERY_N_BARS: ${EDIT_EVERY_N_BARS:-16}
     OPENCLAW_THINKING: ${OPENCLAW_THINKING:-low}
   volumes: &agent-volumes

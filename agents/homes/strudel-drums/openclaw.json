@@ -2,55 +2,19 @@
   "agents": {
     "defaults": {
       "workspace": "/workspace",
-      "model": {
-        "primary": "nvidia/meta/llama-3.3-70b-instruct"
-      },
-      "skipBootstrap": true,
-      "models": {
-        "nvidia/meta/llama-3.3-70b-instruct": {}
-      }
+      "model": { "primary": "google/gemini-2.5-flash" },
+      "models": { "google/gemini-2.5-flash": {} },
+      "skipBootstrap": true
     },
     "list": [
-      {
-        "id": "main",
-        "identity": {
-          "name": "Drums",
-          "theme": "Strudel drum agent",
-          "emoji": "\ud83e\udd41"
-        }
-      }
+      { "id": "main", "identity": { "name": "Drums", "theme": "Strudel drum agent", "emoji": "🥁" } }
     ]
   },
   "gateway": {
     "mode": "local",
     "bind": "loopback",
-    "auth": {
-      "mode": "token",
-      "token": "e4a7f27be9aa80daa08ce3c2724052f17985847fcc14806a0a9f6fd11c8f3440"
-    },
-    "remote": {
-      "token": "e4a7f27be9aa80daa08ce3c2724052f17985847fcc14806a0a9f6fd11c8f3440"
-    }
+    "auth": { "mode": "token", "token": "e4a7f27be9aa80daa08ce3c2724052f17985847fcc14806a0a9f6fd11c8f3440" },
+    "remote": { "token": "e4a7f27be9aa80daa08ce3c2724052f17985847fcc14806a0a9f6fd11c8f3440" }
   },
-  "messages": {
-    "visibleReplies": "automatic"
-  },
-  "meta": {
-    "lastTouchedVersion": "2026.5.26",
-    "lastTouchedAt": "2026-05-27T02:01:04.123Z"
-  },
-  "models": {
-    "providers": {
-      "nvidia": {
-        "models": [
-          {
-            "id": "meta/llama-3.3-70b-instruct",
-            "name": "Llama 3.3 70B Instruct"
-          }
-        ],
-        "baseUrl": "https://integrate.api.nvidia.com/v1",
-        "api": "openai-completions"
-      }
-    }
-  }
+  "messages": { "visibleReplies": "automatic" }
 }
