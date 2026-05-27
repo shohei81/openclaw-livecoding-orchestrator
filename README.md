@@ -1,22 +1,22 @@
 # openclaw-livecoding-orchestrator
 
-実験的リポジトリ。**[OpenClaw](https://github.com/openclaw/openclaw) を docker compose で4つ並列に走らせて、Strudel + Hydra のローカルライブコーディングセッションをオーケストレーション** する。各エージェント = 独立した OpenClaw Gateway コンテナ。LLM は **Google Gemini 2.5 Flash**。
+Experimental repo. **Run four [OpenClaw](https://github.com/openclaw/openclaw) gateways in parallel via docker compose to orchestrate a local Strudel + Hydra live-coding session.** Each agent is its own OpenClaw Gateway container. The LLM is **Google Gemini 2.5 Flash**.
 
-## 構成
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  Host Chrome  →  http://localhost:8080                      │
-│  (Strudel + Hydra hot-eval を1ページに同居)                  │
+│  (Strudel + Hydra hot-eval in one page)                     │
 └────────────▲────────────────────────────────────────────────┘
-             │ WebSocket (pattern.committed イベント)
+             │ WebSocket (pattern.committed events)
 ┌────────────┴──────────┐   ┌──────────────┐   ┌────────────┐
 │   livecoding-host     │   │   validator  │   │  conductor │
-│  (Express + WS + SPA) │   │  (acorn 構文 │   │  (bar tick │
-│                       │   │   + 識別子)   │   │   publish) │
+│  (Express + WS + SPA) │   │  (acorn      │   │  (bar.tick │
+│                       │   │   + ident.)  │   │   publish) │
 └──────▲────────────────┘   └──────▲───────┘   └─────┬──────┘
        │                           │                 │
-       │  pattern.committed         │ POST /validate │ bar.tick
+       │ pattern.committed         │ POST /validate  │ bar.tick
        │                           │                 │
        │                ┌──────────┴─────────────────▼───────┐
        │                │            Redis pub/sub            │
@@ -28,127 +28,117 @@
                │ (OpenClaw + │ │(OpenClaw │ │(OpenClaw│ │(OpenC│
                │  sidecar)   │ │ +sidecar)│ │ +sidecar│ │+side)│
                └─────────────┘ └──────────┘ └─────────┘ └──────┘
-                          4 つの独立 OpenClaw Gateway
-                          (Google Gemini 2.5 Flash 経由)
+                          4 independent OpenClaw gateways
+                          (Google Gemini 2.5 Flash)
 ```
 
-各エージェントコンテナは **OpenClaw Gateway 本体** + **sidecar Node ループ** を tini 配下で同居。sidecar が Redis の `bar.tick` を購読し、自分の番が来たら subprocess で `openclaw agent --message "<context>"` を叩いて Gemini にコード生成させる。
+Each agent container runs the **OpenClaw Gateway** and a **sidecar Node loop** under tini. The sidecar subscribes to `bar.tick` on Redis, and when its phase comes up it shells out to `openclaw agent --message "<context>"`, which routes through OpenClaw to Gemini and returns generated code.
 
-## エージェントの役割（初期固定）
+An `observer` service also subscribes to every Redis channel and appends each event as one line of JSON to `session/<id>/transcript.jsonl` for later replay or analysis.
 
-| エージェント | 役割 | プロンプト |
+## Agent roles (fixed for now)
+
+| Agent | Role | Prompt |
 |---|---|---|
-| strudel-drums | ドラム/パーカッション | `agents/strudel-drums/prompt.md` |
-| strudel-bass  | ベース/ハーモニー     | `agents/strudel-bass/prompt.md`  |
-| strudel-lead  | リード/メロディ        | `agents/strudel-lead/prompt.md`  |
-| hydra         | strudel に反応する映像 | `agents/hydra/prompt.md`         |
+| strudel-drums | Drums / percussion | `agents/strudel-drums/prompt.md` |
+| strudel-bass  | Bass / harmony     | `agents/strudel-bass/prompt.md`  |
+| strudel-lead  | Lead / melody      | `agents/strudel-lead/prompt.md`  |
+| hydra         | Visuals reacting to strudel | `agents/hydra/prompt.md` |
 
-各役割プロンプトの先頭に **Strudel/Hydra のリファレンス** (`agents/_shared/*.md`) を連結して system prompt にする。リファレンスは公式 docs と hydra-synth ソースから抽出した正しい構文・関数シグネチャ一覧。LLM の幻覚（例：`euclid(3,8,">")`、`+1.5` 移調 etc.）を抑える。
+A **Strudel/Hydra reference** (`agents/_shared/*.md`) is concatenated in front of each role prompt to form the system prompt. The references are extracted from the official Strudel docs and from the hydra-synth source, so the model has authoritative syntax and signatures and is less likely to hallucinate operators that don't exist.
 
-## ループ管理
+## Loop
 
 ```
 [bar.tick]
    ↓
-sidecar が phase に該当するか判定 (bar % 16 == phase で発火)
+sidecar checks phase (fires when bar % 16 == phase)
    ↓
-コンテキスト構築 (自分の前回コード + 他エージェントの最新 committed)
+build context (your previous code + every other agent's latest committed)
    ↓
-openclaw agent --message "..." を subprocess 起動
-   ↓ (Gemini が応答)
-extractCode で reasoning を剥がして単一式を取り出す
+spawn `openclaw agent --message ...`
+   ↓ (Gemini responds)
+extractCode strips reasoning and pulls the single expression
    ↓
-POST validator: 構文OK + 単一式 + 既知識別子チェック
-   ↓ OK
-session/<id>/<agent>/current.js に書く
-pattern.committed を Redis publish
+POST validator: parse + single-expression + known-identifier check
+   ↓ ok
+write session/<id>/<agent>/current.js
+publish pattern.committed on Redis
    ↓
-livecoding-host が WS でブラウザに転送
+livecoding-host forwards over WebSocket
    ↓
-ブラウザの Strudel/Hydra が次サイクル境界で eval
+browser's Strudel / Hydra evaluates at the next cycle boundary
 ```
 
-途中で何かが壊れても **音と映像は止まらない**：
-- validator が reject → エージェントは次のサイクルで再挑戦、他は据え置き
-- ブラウザ側 eval が throw → host が「最後の good」にロールバック
-- LLM レート制限 → 失敗としてログ、次サイクルでリトライ
+If anything goes wrong, **the audio and visuals never stop**:
+- validator rejects → that agent retries next tick, others stay put.
+- browser eval throws → host rolls the slot back to its last-good value.
+- LLM rate-limited → cycle logs the failure and tries again next tick.
 
-## 起動
+## Run
 
-### 1. OpenClaw 本体イメージを準備（初回のみ）
+### 1. Build the OpenClaw image (once)
 
 ```bash
 git clone --depth 1 https://github.com/openclaw/openclaw.git third_party/openclaw
-docker build -t openclaw:local ./third_party/openclaw   # 5〜15分
+docker build -t openclaw:local ./third_party/openclaw   # 5–15 min
 ```
 
-`third_party/` は `.gitignore` 対象。
+`third_party/` is gitignored.
 
-### 2. API キー設定
+### 2. Configure the API key
 
 ```bash
 cp .env.example .env
-# .env を編集:
+# edit .env:
 #   GEMINI_API_KEY=AIzaSy...
 ```
 
-Gemini API キー: <https://aistudio.google.com/apikey>
+Gemini API key: <https://aistudio.google.com/apikey>
 
-### 3. 起動
+### 3. Start
 
 ```bash
 docker compose up -d
 open http://localhost:8080
-# ページ上のオーバーレイをクリック (AudioContext 起動)
+# click the start overlay (needed once to unlock AudioContext)
 ```
 
-30〜40 秒で各エージェントが順番に commit を始め、ブラウザに音と映像が出る。
+Within 30–40 seconds each agent should commit its first pattern; audio + visuals appear in the page.
 
-## ファイル構成
+Gateway auth tokens are generated at container startup by `entrypoint.sh` via `openssl rand -hex 32` and passed as `OPENCLAW_GATEWAY_TOKEN`, which both the gateway and the in-container CLI honor. Pin a fixed value by exporting `OPENCLAW_GATEWAY_TOKEN` in the env if you need restart-stable tokens.
+
+## File layout
 
 ```
 agents/
-  loop/                       Sidecar ループの Docker image (FROM openclaw:local)
+  loop/                       Sidecar loop image (FROM openclaw:local)
     Dockerfile / entrypoint.sh / loop.js / package.json
-  homes/<agent-id>/           マウントされて /home/node/.openclaw になる
-    openclaw.json             gateway 設定 + Gemini provider + agent 定義
-    workspace/AGENTS.md       OpenClaw が system prompt に注入する役割定義
-  <agent-id>/prompt.md        役割プロンプト (workspace/AGENTS.md の生成元)
-  _shared/                    Strudel/Hydra リファレンス
+  homes/<agent-id>/           Mounted as /home/node/.openclaw
+    openclaw.json             gateway + Gemini provider + agent definition
+    workspace/AGENTS.md       Injected into the system prompt by OpenClaw
+  <agent-id>/prompt.md        Role prompt (source of workspace/AGENTS.md)
+  _shared/                    Strudel / Hydra reference cards
     strudel-reference.md
     hydra-reference.md
-livecoding-host/              SPA を配信、Redis → WebSocket ブリッジ
+livecoding-host/              Serves the SPA, bridges Redis → WebSocket
   src/{index,app}.html/.js    Strudel @1.3.0 + Hydra @1.3.29 (UMD)
-validator/                    acorn ベースの構文・単一式チェック
-conductor/                    BPM/拍子から bar.tick を周期 publish (絶対時刻スケジューラ)
-observer/                     Redis の全イベントを transcript.jsonl に追記
-session/<id>/<agent>/         各エージェントの最新 committed コード
-session/<id>/transcript.jsonl 全イベントの時系列 (observer 出力)
+validator/                    acorn-based syntax + single-expression check
+conductor/                    Publishes bar.tick (absolute-time scheduler)
+observer/                     Appends every Redis event to transcript.jsonl
+session/<id>/<agent>/         Each agent's latest committed code
+session/<id>/transcript.jsonl Full event timeline (observer output)
 docker-compose.yml
-third_party/openclaw/         (gitignore) クローン専用
+third_party/openclaw/         (gitignored) cloned upstream
 ```
 
-## トラブルシューティング
+## Status
 
-| 症状 | 原因 / 対処 |
-|---|---|
-| `gateway died before becoming ready` (config missing gateway.mode) | `openclaw.json` の `gateway.mode: "local"` 必須 |
-| `unauthorized: gateway token missing` | entrypoint が `OPENCLAW_GATEWAY_TOKEN` を生成し gateway/CLI 両方に渡す。固定値で運用したい場合は env で渡す |
-| `No API key found for provider "google"` | `.env` 編集後に `docker compose up -d --force-recreate` してください（restart では env が反映されない） |
-| `Unknown model: ...` | `models.providers.<provider>.models[]` に `{id, name}` を明示登録 |
-| ブラウザがグレーで映像出ず | Strudel と Hydra が `window.speed` 等を取り合う問題。`hydra.sandbox.tick = () => {}` で同期を切る（コード内対応済） |
-| `[mini] parse error` | LLM の幻覚。リファレンス強化で減少するが完全ゼロは不可。host 側ロールバックで音は維持 |
+Bugs, limitations, and TODOs live in [GitHub Issues](https://github.com/shohei81/openclaw-livecoding-orchestrator/issues), not in this file.
 
-## 既知の課題
+## References
 
-- **エージェントが互いを echo**: コンテキストで他エージェントのコードを見せると Gemini がそれを真似て同じ系統のコードを生成。bass が drums 風 stack を出す等
-- **NIM 経由は不安定**: rate limit が厳しく、kimi-k2.6 では NIM 側サーバの 500（Python serializer bug）。NIM 直叩きの phase (c) は動作するが、OpenClaw 経由は Gemini が安定
-- **conductor は単純な setInterval**: 長時間で drift する可能性
-- **session memory**: 同じ `session-key` で OpenClaw のセッションを使い回し、過去のターン履歴が context に積もる。長時間運用でトークン圧迫の可能性
-
-## 関連リンク
-
-- OpenClaw: <https://github.com/openclaw/openclaw> / [Docs](https://docs.openclaw.ai)
-- Strudel: <https://strudel.cc> / [mini-notation](https://strudel.cc/learn/mini-notation/)
+- OpenClaw: <https://github.com/openclaw/openclaw> · [Docs](https://docs.openclaw.ai)
+- Strudel: <https://strudel.cc> · [mini-notation](https://strudel.cc/learn/mini-notation/)
 - Hydra: <https://hydra.ojack.xyz/docs/>
-- NVIDIA NIM (phase (c) で使用): <https://build.nvidia.com>
+- NVIDIA NIM (used in earlier phase (c)): <https://build.nvidia.com>
