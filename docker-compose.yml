@@ -9,8 +9,8 @@ x-agent: &agent
     SESSION_DIR: /session
     NVIDIA_API_KEY: ${NVIDIA_API_KEY}
     NVIDIA_BASE_URL: ${NVIDIA_BASE_URL:-https://integrate.api.nvidia.com/v1}
-    NVIDIA_MODEL: ${NVIDIA_MODEL:-qwen/qwen2.5-coder-32b-instruct}
-    EDIT_EVERY_N_BARS: ${EDIT_EVERY_N_BARS:-8}
+    NVIDIA_MODEL: ${NVIDIA_MODEL:-meta/llama-3.3-70b-instruct}
+    EDIT_EVERY_N_BARS: ${EDIT_EVERY_N_BARS:-16}
     TEMPERATURE: ${TEMPERATURE:-0.8}
   volumes: &agent-volumes
     - ./session:/session
@@ -79,10 +79,12 @@ services:
       AGENT_ID: strudel-drums
       AGENT_ROLE: strudel
       PROMPT_PATH: /prompt.md
+      REFERENCE_PATH: /reference.md
       EDIT_PHASE_OFFSET: 0
     volumes:
       - ./session:/session
       - ./agents/strudel-drums/prompt.md:/prompt.md:ro
+      - ./agents/_shared/strudel-reference.md:/reference.md:ro
 
   agent-strudel-bass:
     <<: *agent
@@ -91,10 +93,12 @@ services:
       AGENT_ID: strudel-bass
       AGENT_ROLE: strudel
       PROMPT_PATH: /prompt.md
+      REFERENCE_PATH: /reference.md
       EDIT_PHASE_OFFSET: 2
     volumes:
       - ./session:/session
       - ./agents/strudel-bass/prompt.md:/prompt.md:ro
+      - ./agents/_shared/strudel-reference.md:/reference.md:ro
 
   agent-strudel-lead:
     <<: *agent
@@ -103,10 +107,12 @@ services:
       AGENT_ID: strudel-lead
       AGENT_ROLE: strudel
       PROMPT_PATH: /prompt.md
+      REFERENCE_PATH: /reference.md
       EDIT_PHASE_OFFSET: 4
     volumes:
       - ./session:/session
       - ./agents/strudel-lead/prompt.md:/prompt.md:ro
+      - ./agents/_shared/strudel-reference.md:/reference.md:ro
 
   agent-hydra:
     <<: *agent
@@ -115,7 +121,9 @@ services:
       AGENT_ID: hydra
       AGENT_ROLE: hydra
       PROMPT_PATH: /prompt.md
+      REFERENCE_PATH: /reference.md
       EDIT_PHASE_OFFSET: 6
     volumes:
       - ./session:/session
       - ./agents/hydra/prompt.md:/prompt.md:ro
+      - ./agents/_shared/hydra-reference.md:/reference.md:ro

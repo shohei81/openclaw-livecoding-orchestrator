@@ -29,12 +29,25 @@ const HYDRA_GLOBALS = new Set([
 ]);
 
 function checkSyntax(code) {
+  let ast;
   try {
-    acorn.parse(code, { ecmaVersion: "latest", sourceType: "script", allowReturnOutsideFunction: true });
-    return null;
+    ast = acorn.parse(code, { ecmaVersion: "latest", sourceType: "script", allowReturnOutsideFunction: true });
   } catch (e) {
     return `syntax: ${e.message}`;
   }
+  // Enforce single top-level expression. Multiple statements or comma-operator
+  // sequences break the host's stack-wrap step and produce silent failures.
+  if (ast.body.length !== 1) {
+    return `expected 1 top-level statement, got ${ast.body.length}`;
+  }
+  const stmt = ast.body[0];
+  if (stmt.type !== "ExpressionStatement") {
+    return `expected ExpressionStatement, got ${stmt.type}`;
+  }
+  if (stmt.expression.type === "SequenceExpression") {
+    return "use stack(a, b, c) instead of (a, b, c) — bare commas are the comma operator";
+  }
+  return null;
 }
 
 function checkIdentifiers(code, allowed) {

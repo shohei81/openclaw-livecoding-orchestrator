@@ -31,9 +31,12 @@ export async function chat({ baseUrl, apiKey, model, system, user, temperature =
 }
 
 // Strip markdown code fences and prose around the actual code.
-// The model often wraps output in ```js ... ``` or adds commentary.
+// Models wrap output in ```js ... ```, sometimes without a newline after the
+// opening fence, sometimes with arbitrary prose before/after. Try fenced
+// extraction first, then fall back to the trimmed raw.
 export function extractCode(raw) {
-  const fence = raw.match(/```(?:[a-zA-Z]+)?\n([\s\S]*?)```/);
-  if (fence) return fence[1].trim();
-  return raw.trim();
+  let s = raw.trim();
+  const fence = s.match(/```(?:[a-zA-Z0-9_+\-]*)\s*([\s\S]*?)```/);
+  if (fence) s = fence[1];
+  return s.trim();
 }

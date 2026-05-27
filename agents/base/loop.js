@@ -17,8 +17,8 @@ const {
   SESSION_DIR = "/session",
   NVIDIA_API_KEY,
   NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1",
-  NVIDIA_MODEL = "qwen/qwen2.5-coder-32b-instruct",
-  EDIT_EVERY_N_BARS = "8",
+  NVIDIA_MODEL = "meta/llama-3.3-70b-instruct",
+  EDIT_EVERY_N_BARS = "16",
   EDIT_PHASE_OFFSET = "0",
   TEMPERATURE = "0.8",
 } = process.env;
@@ -31,24 +31,38 @@ const editEvery = Math.max(1, Number(EDIT_EVERY_N_BARS));
 const phase = Number(EDIT_PHASE_OFFSET) % editEvery;
 const temperature = Number(TEMPERATURE);
 
-const pub = new Redis(REDIS_URL);
-const sub = new Redis(REDIS_URL);
+// enableReadyCheck:false avoids ioredis sending INFO on a subscriber-mode
+// connection, which throws "Connection in subscriber mode" and silently
+// drops the subscription.
+const pub = new Redis(REDIS_URL, { enableReadyCheck: false });
+const sub = new Redis(REDIS_URL, { enableReadyCheck: false });
 
 // Latest committed code from every agent (including ourselves), for context.
 const peers = {};
 let currentCode = null;
 let busy = false;
 
-const rolePrompt = await fs.readFile(PROMPT_PATH, "utf8").catch(() => {
-  console.warn(`[${AGENT_ID}] no prompt at ${PROMPT_PATH}, using empty role`);
-  return "";
-});
+const REFERENCE_PATH = process.env.REFERENCE_PATH || "/reference.md";
+const [rolePrompt, reference] = await Promise.all([
+  fs.readFile(PROMPT_PATH, "utf8").catch(() => {
+    console.warn(`[${AGENT_ID}] no prompt at ${PROMPT_PATH}`);
+    return "";
+  }),
+  fs.readFile(REFERENCE_PATH, "utf8").catch(() => {
+    console.warn(`[${AGENT_ID}] no reference at ${REFERENCE_PATH}`);
+    return "";
+  }),
+]);
 
-const systemPrompt = `${rolePrompt.trim()}
+const systemPrompt = `${reference.trim()}
+
+---
+
+${rolePrompt.trim()}
 
 Output ONLY raw ${AGENT_ROLE === "hydra" ? "Hydra (hydra-synth)" : "Strudel"} code.
 No prose, no markdown, no commentary. The output is fed directly to eval().
-Keep it short — a few lines.`;
+Single line, single expression.`;
 
 await sub.subscribe("bar.tick", "pattern.committed", "session.start");
 sub.on("message", async (channel, raw) => {

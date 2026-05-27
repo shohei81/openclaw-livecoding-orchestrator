@@ -96,14 +96,31 @@ initStrudel({
   rebuildStrudelStack();
 });
 
+// The validator guarantees each agent commits a single Strudel expression,
+// so we just parenthesize and stack. Returns true on successful eval.
 function rebuildStrudelStack() {
-  if (!strudelReady) return;
-  const parts = Object.values(strudelSlots).filter((s) => s && s.trim());
-  const code = parts.length ? `stack(\n${parts.map((p) => `  (${p})`).join(",\n")}\n)` : "silence";
+  if (!strudelReady) return false;
+  const parts = Object.values(strudelSlots).filter((c) => c && c.trim()).map((c) => `(${c.trim()})`);
+  const code = parts.length ? `stack(\n${parts.join(",\n")}\n)` : "silence";
   try {
     evaluate(code);
+    return true;
   } catch (e) {
-    console.error("strudel eval failed", e);
+    console.error("strudel eval failed:", e.message, "\ncode:\n", code);
+    return false;
+  }
+}
+
+// Try a new code for an agent's slot; if Strudel rejects (mini-notation
+// parse error, semantic issue the syntax validator can't catch), roll back
+// so the other agents' patterns aren't dragged down by one broken slot.
+function trySetStrudelSlot(agent, newCode) {
+  const oldCode = strudelSlots[agent];
+  strudelSlots[agent] = newCode;
+  if (!rebuildStrudelStack()) {
+    console.warn(`[${agent}] rolled back to previous slot value`);
+    strudelSlots[agent] = oldCode;
+    rebuildStrudelStack();
   }
 }
 
@@ -184,8 +201,7 @@ function connect() {
       if (agent === "hydra") {
         runHydra(code);
       } else if (agent in strudelSlots) {
-        strudelSlots[agent] = code;
-        rebuildStrudelStack();
+        trySetStrudelSlot(agent, code);
       }
     } else if (msg.type === "bar.tick") {
       statusEl.textContent = `bar ${msg.bar} @ ${msg.bpm} bpm`;
