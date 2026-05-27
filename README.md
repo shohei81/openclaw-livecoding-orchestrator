@@ -51,13 +51,27 @@ OpenClaw を docker compose で並列に走らせ、Strudel + Hydra のローカ
 
 ## 起動
 
+OpenClaw 本体イメージは別途ビルドが必要（リポジトリには含めない、`.gitignore`済）：
+
+```bash
+git clone --depth 1 https://github.com/openclaw/openclaw.git third_party/openclaw
+docker build -t openclaw:local ./third_party/openclaw   # 5〜15分
+```
+
+その後：
+
 ```bash
 cp .env.example .env
-# NVIDIA_API_KEY を埋める
+# .env に NVIDIA_API_KEY を埋める
 docker compose up -d
 open http://localhost:8080
 ```
 
+各エージェントの `agents/homes/<id>/openclaw.json` には loopback bound gateway 用の
+ランダムトークンが入っている。クローン直後にそのまま動くが、共有環境で使う場合は
+各自再生成推奨（`openssl rand -hex 32` で auth.token と remote.token に同じ値を入れる）。
+
 ## 現状
 
-実装途中。各コンポーネントの README を参照。
+実装途中。Phase (a)（4 つの OpenClaw Gateway 並走）まで構造的には到達。
+NIM レートと細かい session resolve 問題が次の宿題。各コンポーネントの README を参照。

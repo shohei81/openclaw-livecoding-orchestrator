@@ -1,0 +1,52 @@
+{
+  "agents": {
+    "defaults": {
+      "workspace": "/workspace",
+      "model": {
+        "primary": "nvidia/meta/llama-3.3-70b-instruct"
+      },
+      "models": {
+        "nvidia/meta/llama-3.3-70b-instruct": {}
+      },
+      "skipBootstrap": true
+    },
+    "list": [
+      {
+        "id": "main",
+        "identity": {
+          "name": "Bass",
+          "theme": "Strudel bass agent",
+          "emoji": "\ud83c\udfb8"
+        }
+      }
+    ]
+  },
+  "models": {
+    "providers": {
+      "nvidia": {
+        "models": [
+          {
+            "id": "meta/llama-3.3-70b-instruct",
+            "name": "Llama 3.3 70B Instruct"
+          }
+        ],
+        "baseUrl": "https://integrate.api.nvidia.com/v1",
+        "api": "openai-completions"
+      }
+    }
+  },
+  "gateway": {
+    "mode": "local",
+    "bind": "loopback",
+    "auth": {
+      "mode": "token",
+      "token": "66ead3898f99292edd4fa427649fc969efe1954cd45e80d79cc27f14c4dab6a7"
+    },
+    "remote": {
+      "token": "66ead3898f99292edd4fa427649fc969efe1954cd45e80d79cc27f14c4dab6a7"
+    }
+  },
+  "messages": {
+    "visibleReplies": "automatic"
+  }
+}

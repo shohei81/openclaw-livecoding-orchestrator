@@ -1,7 +1,11 @@
 name: openclaw-livecoding
 
+# Phase (a): each agent runs an OpenClaw Gateway + sidecar loop in one
+# container. The image is FROM openclaw:local — build that first:
+#   docker build -t openclaw:local ./third_party/openclaw
+# (third_party/openclaw is gitignored; see README for clone instructions.)
 x-agent: &agent
-  build: ./agents/base
+  build: ./agents/loop
   environment: &agent-env
     REDIS_URL: redis://redis:6379
     VALIDATOR_URL: http://validator:8081
@@ -9,9 +13,8 @@ x-agent: &agent
     SESSION_DIR: /session
     NVIDIA_API_KEY: ${NVIDIA_API_KEY}
     NVIDIA_BASE_URL: ${NVIDIA_BASE_URL:-https://integrate.api.nvidia.com/v1}
-    NVIDIA_MODEL: ${NVIDIA_MODEL:-meta/llama-3.3-70b-instruct}
     EDIT_EVERY_N_BARS: ${EDIT_EVERY_N_BARS:-16}
-    TEMPERATURE: ${TEMPERATURE:-0.8}
+    OPENCLAW_THINKING: ${OPENCLAW_THINKING:-low}
   volumes: &agent-volumes
     - ./session:/session
   depends_on: &agent-deps
@@ -65,26 +68,17 @@ services:
       redis:
         condition: service_healthy
 
-  # ---------------------------------------------------------------
-  # Phase (c): thin agent containers calling NIM directly.
-  # Phase (a) will replace these with OpenClaw Gateway + sidecar pairs.
-  # Edits are staggered via EDIT_PHASE_OFFSET so they don't all fire on
-  # the same bar.
-  # ---------------------------------------------------------------
-
   agent-strudel-drums:
     <<: *agent
     environment:
       <<: *agent-env
       AGENT_ID: strudel-drums
       AGENT_ROLE: strudel
-      PROMPT_PATH: /prompt.md
-      REFERENCE_PATH: /reference.md
       EDIT_PHASE_OFFSET: 0
     volumes:
       - ./session:/session
-      - ./agents/strudel-drums/prompt.md:/prompt.md:ro
-      - ./agents/_shared/strudel-reference.md:/reference.md:ro
+      - ./agents/homes/strudel-drums:/home/node/.openclaw
+      - ./agents/homes/strudel-drums/workspace:/workspace
 
   agent-strudel-bass:
     <<: *agent
@@ -92,13 +86,11 @@ services:
       <<: *agent-env
       AGENT_ID: strudel-bass
       AGENT_ROLE: strudel
-      PROMPT_PATH: /prompt.md
-      REFERENCE_PATH: /reference.md
       EDIT_PHASE_OFFSET: 2
     volumes:
       - ./session:/session
-      - ./agents/strudel-bass/prompt.md:/prompt.md:ro
-      - ./agents/_shared/strudel-reference.md:/reference.md:ro
+      - ./agents/homes/strudel-bass:/home/node/.openclaw
+      - ./agents/homes/strudel-bass/workspace:/workspace
 
   agent-strudel-lead:
     <<: *agent
@@ -106,13 +98,11 @@ services:
       <<: *agent-env
       AGENT_ID: strudel-lead
       AGENT_ROLE: strudel
-      PROMPT_PATH: /prompt.md
-      REFERENCE_PATH: /reference.md
       EDIT_PHASE_OFFSET: 4
     volumes:
       - ./session:/session
-      - ./agents/strudel-lead/prompt.md:/prompt.md:ro
-      - ./agents/_shared/strudel-reference.md:/reference.md:ro
+      - ./agents/homes/strudel-lead:/home/node/.openclaw
+      - ./agents/homes/strudel-lead/workspace:/workspace
 
   agent-hydra:
     <<: *agent
@@ -120,10 +110,8 @@ services:
       <<: *agent-env
       AGENT_ID: hydra
       AGENT_ROLE: hydra
-      PROMPT_PATH: /prompt.md
-      REFERENCE_PATH: /reference.md
       EDIT_PHASE_OFFSET: 6
     volumes:
       - ./session:/session
-      - ./agents/hydra/prompt.md:/prompt.md:ro
-      - ./agents/_shared/hydra-reference.md:/reference.md:ro
+      - ./agents/homes/hydra:/home/node/.openclaw
+      - ./agents/homes/hydra/workspace:/workspace
