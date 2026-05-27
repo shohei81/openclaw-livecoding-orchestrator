@@ -13,8 +13,7 @@
   "gateway": {
     "mode": "local",
     "bind": "loopback",
-    "auth": { "mode": "token", "token": "6ce938d99299b384ac103f7b2de63911bc6aa126ea5dcf696910d61ad98fd11c" },
-    "remote": { "token": "6ce938d99299b384ac103f7b2de63911bc6aa126ea5dcf696910d61ad98fd11c" }
+    "auth": { "mode": "token" }
   },
   "messages": { "visibleReplies": "automatic" }
 }

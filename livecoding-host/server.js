@@ -11,16 +11,8 @@ const REDIS_URL = process.env.REDIS_URL || "redis://redis:6379";
 const SESSION_ID = process.env.SESSION_ID || "session-001";
 
 const app = express();
-app.use(express.json({ limit: "1mb" }));
 app.use(express.static(path.join(__dirname, "src")));
 app.use("/session", express.static(path.join(__dirname, "session")));
-
-// Browser diagnostics drop point. The page POSTs structured findings here so
-// we can read them from `docker compose logs livecoding-host`.
-app.post("/diag", (req, res) => {
-  console.log("[diag]", JSON.stringify(req.body));
-  res.json({ ok: true });
-});
 
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: "/ws" });

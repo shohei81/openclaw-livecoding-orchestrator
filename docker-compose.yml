@@ -58,6 +58,18 @@ services:
     environment:
       PORT: 8081
 
+  observer:
+    build: ./observer
+    environment:
+      REDIS_URL: redis://redis:6379
+      SESSION_ID: ${SESSION_ID:-session-001}
+      SESSION_DIR: /session
+    volumes:
+      - ./session:/session
+    depends_on:
+      redis:
+        condition: service_healthy
+
   conductor:
     build: ./conductor
     environment:

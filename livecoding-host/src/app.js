@@ -3,7 +3,7 @@
 // the corresponding engine (strudel | hydra) re-evaluates the code.
 // Strudel's REPL aligns the pattern swap to the next cycle automatically.
 
-import { initStrudel, evaluate, samples, silence } from "https://cdn.jsdelivr.net/npm/@strudel/web@1.3.0/dist/index.mjs";
+import { initStrudel, evaluate, samples } from "https://cdn.jsdelivr.net/npm/@strudel/web@1.3.0/dist/index.mjs";
 // Hydra comes from a UMD <script> tag in index.html (window.Hydra).
 const Hydra = window.Hydra;
 
@@ -18,9 +18,6 @@ const panes = Object.fromEntries(
 // of them changes. Strudel aligns the swap to the next cycle internally.
 const strudelSlots = { "strudel-drums": null, "strudel-bass": null, "strudel-lead": null };
 let strudelReady = false;
-
-// Expose helpers for browser-console diagnostics.
-window.__strudel = { samples, evaluate, silence };
 
 const diagEl = document.getElementById("diag");
 function updateDiag() {
@@ -73,21 +70,11 @@ startOverlay.addEventListener("click", async () => {
 
 initStrudel({
   prebake: async () => {
-    console.log("[prebake] loading samples...");
     try {
-      const r = await samples("github:tidalcycles/dirt-samples");
-      console.log("[prebake] samples() resolved:", r);
+      await samples("github:tidalcycles/dirt-samples");
     } catch (e) {
-      console.error("[prebake] samples() failed:", e);
-      // Fallback: try the fully-qualified URL form
-      try {
-        const r2 = await samples(
-          "https://raw.githubusercontent.com/tidalcycles/dirt-samples/main/strudel.json"
-        );
-        console.log("[prebake] fallback URL samples() resolved:", r2);
-      } catch (e2) {
-        console.error("[prebake] fallback samples() also failed:", e2);
-      }
+      console.warn("prebake: github:tidalcycles/dirt-samples failed, retrying URL", e?.message);
+      await samples("https://raw.githubusercontent.com/tidalcycles/dirt-samples/main/strudel.json");
     }
   },
 }).then(() => {

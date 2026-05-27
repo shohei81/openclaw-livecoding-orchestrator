@@ -120,8 +120,10 @@ agents/
 livecoding-host/              SPA を配信、Redis → WebSocket ブリッジ
   src/{index,app}.html/.js    Strudel @1.3.0 + Hydra @1.3.29 (UMD)
 validator/                    acorn ベースの構文・単一式チェック
-conductor/                    BPM/拍子から bar.tick を周期 publish
+conductor/                    BPM/拍子から bar.tick を周期 publish (絶対時刻スケジューラ)
+observer/                     Redis の全イベントを transcript.jsonl に追記
 session/<id>/<agent>/         各エージェントの最新 committed コード
+session/<id>/transcript.jsonl 全イベントの時系列 (observer 出力)
 docker-compose.yml
 third_party/openclaw/         (gitignore) クローン専用
 ```
@@ -131,7 +133,7 @@ third_party/openclaw/         (gitignore) クローン専用
 | 症状 | 原因 / 対処 |
 |---|---|
 | `gateway died before becoming ready` (config missing gateway.mode) | `openclaw.json` の `gateway.mode: "local"` 必須 |
-| `unauthorized: gateway token missing` | `gateway.auth.token` と `gateway.remote.token` を **同じ値** にする |
+| `unauthorized: gateway token missing` | entrypoint が `OPENCLAW_GATEWAY_TOKEN` を生成し gateway/CLI 両方に渡す。固定値で運用したい場合は env で渡す |
 | `No API key found for provider "google"` | `.env` 編集後に `docker compose up -d --force-recreate` してください（restart では env が反映されない） |
 | `Unknown model: ...` | `models.providers.<provider>.models[]` に `{id, name}` を明示登録 |
 | ブラウザがグレーで映像出ず | Strudel と Hydra が `window.speed` 等を取り合う問題。`hydra.sandbox.tick = () => {}` で同期を切る（コード内対応済） |
