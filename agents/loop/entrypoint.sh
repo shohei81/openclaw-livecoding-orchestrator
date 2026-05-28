@@ -13,6 +13,17 @@ if [ -z "${OPENCLAW_GATEWAY_TOKEN:-}" ]; then
   export OPENCLAW_GATEWAY_TOKEN="$(openssl rand -hex 32)"
 fi
 
+# Wipe per-agent session memory at every container start. Session JSONLs from
+# previous docker runs were biasing the LLM toward older (often worse) turns
+# and amplifying the cross-agent echo. Each new `docker compose up/restart`
+# now begins with a clean transcript; memory still accumulates normally
+# within a single run.
+SESSIONS_DIR="/home/node/.openclaw/agents/main/sessions"
+if [ -d "$SESSIONS_DIR" ]; then
+  rm -rf "$SESSIONS_DIR"/* 2>/dev/null || true
+  echo "[entrypoint] cleared previous session transcripts in $SESSIONS_DIR"
+fi
+
 # Run the gateway with the per-agent home that docker-compose has mounted at
 # /home/node/.openclaw (volume mount from agents/homes/<id>/).
 node /app/openclaw.mjs gateway --bind loopback --port 18789 &
