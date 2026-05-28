@@ -50,13 +50,22 @@ function checkSyntax(code) {
   return null;
 }
 
+// Strip string and template literals so the identifier check doesn't pick up
+// names that live INSIDE mini-notation. Without this, code like
+// `s("hh(3,8)")` matched the regex's `hh(` and `hh` was reported as an
+// unknown function call even though it's just a sample name in a string.
+function stripStrings(code) {
+  return code.replace(/(['"`])(?:\\.|(?!\1).)*\1/gs, '""');
+}
+
 function checkIdentifiers(code, allowed) {
   // Cheap heuristic: surface unknown bare identifiers that look like top-level calls.
   // This is conservative — false positives are fine, the agent just retries.
+  const stripped = stripStrings(code);
   const ids = new Set();
   const re = /\b([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\(/g;
   let m;
-  while ((m = re.exec(code)) !== null) ids.add(m[1]);
+  while ((m = re.exec(stripped)) !== null) ids.add(m[1]);
   const unknown = [...ids].filter((id) => !allowed.has(id));
   if (unknown.length) return `unknown identifiers: ${unknown.slice(0, 5).join(", ")}`;
   return null;
