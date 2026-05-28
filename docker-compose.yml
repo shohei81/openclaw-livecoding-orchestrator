@@ -11,11 +11,15 @@ x-agent: &agent
     VALIDATOR_URL: http://validator:8081
     SESSION_ID: ${SESSION_ID:-session-001}
     SESSION_DIR: /session
-    NVIDIA_API_KEY: ${NVIDIA_API_KEY}
-    NVIDIA_BASE_URL: ${NVIDIA_BASE_URL:-https://integrate.api.nvidia.com/v1}
-    GEMINI_API_KEY: ${GEMINI_API_KEY}
+    # LLM provider — set LLM_MODEL in .env, fill the matching API key, leave
+    # the others blank. OpenClaw auto-enables a provider when its key is set.
+    LLM_MODEL: ${LLM_MODEL:-google/gemini-2.5-flash}
+    GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    NVIDIA_API_KEY: ${NVIDIA_API_KEY:-}
     EDIT_EVERY_N_BARS: ${EDIT_EVERY_N_BARS:-16}
-    OPENCLAW_THINKING: ${OPENCLAW_THINKING:-low}
+    OPENCLAW_THINKING: ${OPENCLAW_THINKING:-off}
   volumes: &agent-volumes
     - ./session:/session
   depends_on: &agent-deps

@@ -20,6 +20,7 @@ const {
   OPENCLAW_TIMEOUT_MS = "60000",
   EDIT_EVERY_N_BARS = "16",
   EDIT_PHASE_OFFSET = "0",
+  LLM_MODEL = "", // empty = use openclaw.json's primary; otherwise --model override
 } = process.env;
 
 if (!AGENT_ID) throw new Error("AGENT_ID required");
@@ -120,6 +121,7 @@ function runOpenClawAgent(message) {
       "--agent", OPENCLAW_AGENT_ID,
       "--session-key", sessionKey,
       "--thinking", OPENCLAW_THINKING,
+      ...(LLM_MODEL ? ["--model", LLM_MODEL] : []),
       "--message", message,
     ];
     const child = spawn(OPENCLAW_BIN, args, { stdio: ["ignore", "pipe", "pipe"] });

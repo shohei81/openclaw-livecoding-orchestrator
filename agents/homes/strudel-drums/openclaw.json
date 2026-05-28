@@ -3,12 +3,30 @@
     "defaults": {
       "workspace": "/workspace",
       "model": { "primary": "google/gemini-2.5-flash" },
-      "models": { "google/gemini-2.5-flash": {} },
+      "models": {
+        "google/gemini-2.5-flash": {},
+        "google/gemini-2.5-pro": {},
+        "openai/gpt-5.5": {},
+        "anthropic/claude-sonnet-4-6": {},
+        "nvidia/meta/llama-3.3-70b-instruct": {},
+        "nvidia/nvidia/nemotron-3-super-120b-a12b": {}
+      },
       "skipBootstrap": true
     },
     "list": [
       { "id": "main", "identity": { "name": "Drums", "theme": "Strudel drum agent", "emoji": "🥁" } }
     ]
+  },
+  "models": {
+    "providers": {
+      "nvidia": {
+        "baseUrl": "https://integrate.api.nvidia.com/v1",
+        "api": "openai-completions",
+        "models": [
+          { "id": "meta/llama-3.3-70b-instruct", "name": "Llama 3.3 70B Instruct" }
+        ]
+      }
+    }
   },
   "gateway": {
     "mode": "local",

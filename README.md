@@ -86,15 +86,23 @@ docker build -t openclaw:local ./third_party/openclaw   # 5–15 min
 
 `third_party/` is gitignored.
 
-### 2. Configure the API key
+### 2. Configure the LLM
 
 ```bash
 cp .env.example .env
-# edit .env:
-#   GEMINI_API_KEY=AIzaSy...
+# edit .env: set LLM_MODEL and the matching provider key.
 ```
 
-Gemini API key: <https://aistudio.google.com/apikey>
+`LLM_MODEL` picks which LLM the agents use; only the corresponding API key has to be filled.
+
+| Provider | `LLM_MODEL` example | API key env |
+|---|---|---|
+| Google Gemini | `google/gemini-2.5-flash` (default) | `GEMINI_API_KEY` ([get one](https://aistudio.google.com/apikey)) |
+| OpenAI        | `openai/gpt-5.5`                    | `OPENAI_API_KEY` |
+| Anthropic     | `anthropic/claude-sonnet-4-6`       | `ANTHROPIC_API_KEY` |
+| NVIDIA NIM    | `nvidia/meta/llama-3.3-70b-instruct` | `NVIDIA_API_KEY` ([build.nvidia.com](https://build.nvidia.com)) |
+
+`OPENCLAW_THINKING=off` is the safe default and is required for Gemini 2.5 Flash, Kimi K2.6, NIM Nemotron, and similar models that don't expose reasoning levels. OpenAI / Anthropic agent models accept `low`/`medium`/`high`.
 
 ### 3. Start
 
