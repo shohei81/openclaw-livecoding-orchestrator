@@ -6,9 +6,11 @@ session/*/
 third_party/
 
 # OpenClaw writes a lot of runtime state inside each agent home; only the
-# config and workspace are meant to be tracked.
+# config and the canonical AGENTS.md are meant to be tracked.
 agents/homes/*/*
 !agents/homes/*/openclaw.json
 !agents/homes/*/workspace/
+agents/homes/*/workspace/*
+!agents/homes/*/workspace/AGENTS.md
 agents/homes/*/openclaw.json.bak
 agents/homes/*/openclaw.json.last-good

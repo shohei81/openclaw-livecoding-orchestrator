@@ -20,12 +20,14 @@ const AGENT_EMOJI = {
   "strudel-bass": "🎸",
   "strudel-lead": "🎹",
   "hydra": "🌀",
+  "user": "🎙️",
 };
 const AGENT_SHORT = {
   "strudel-drums": "drums",
   "strudel-bass": "bass",
   "strudel-lead": "lead",
   "hydra": "hydra",
+  "user": "you",
 };
 const chatLog = document.getElementById("chat-log");
 function appendChat(agent, intent) {
@@ -198,6 +200,28 @@ function runHydra(code) {
   }
 }
 
+// ---- User chat input ----
+// Submit posts to /user-message; the server publishes user.message on Redis,
+// every agent (and this browser via WS echo) receives it. We don't append
+// locally — wait for the WS echo so all clients see the same message order.
+const chatForm = document.getElementById("chat-input-form");
+const chatInput = document.getElementById("chat-input");
+chatForm?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const text = chatInput.value.trim();
+  if (!text) return;
+  chatInput.value = "";
+  try {
+    await fetch("/user-message", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+  } catch (err) {
+    console.error("user-message post failed", err);
+  }
+});
+
 // ---- WebSocket ----
 function connect() {
   const ws = new WebSocket(`ws://${location.host}/ws`);
@@ -219,6 +243,8 @@ function connect() {
       } else if (agent in strudelSlots) {
         trySetStrudelSlot(agent, code);
       }
+    } else if (msg.type === "user.message") {
+      appendChat("user", msg.text);
     } else if (msg.type === "bar.tick") {
       statusEl.textContent = `bar ${msg.bar} @ ${msg.bpm} bpm`;
     }

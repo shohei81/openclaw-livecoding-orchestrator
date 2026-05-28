@@ -37,7 +37,7 @@ const peers = {};
 let currentCode = null;
 let busy = false;
 
-await sub.subscribe("bar.tick", "pattern.committed", "session.start");
+await sub.subscribe("bar.tick", "pattern.committed", "session.start", "user.message");
 sub.on("message", async (channel, raw) => {
   let msg;
   try { msg = JSON.parse(raw); } catch { return; }
@@ -45,6 +45,11 @@ sub.on("message", async (channel, raw) => {
 
   if (channel === "pattern.committed") {
     peers[msg.agent] = { code: msg.code, intent: msg.intent || null };
+    return;
+  }
+  if (channel === "user.message") {
+    // Treat the human director as a 5th peer; latest wins.
+    peers.user = { code: null, intent: msg.text };
     return;
   }
   if (channel === "bar.tick") {
@@ -228,12 +233,15 @@ function extractCode(raw) {
 
 // Agents are asked to prefix each response with `INTENT: <one short sentence>`
 // so we can show what they're thinking in the side chat. The line may appear
-// anywhere in a long reasoning blob (Gemini sometimes wraps it); we grab the
-// first match and cap the length so a runaway model can't flood the UI.
+// anywhere in a long reasoning blob, and Gemini in particular sometimes glues
+// the keyword to the previous sentence with no space (e.g. "...deep feel.INTENT:
+// Provide a single..."). Don't anchor to line start — just find the keyword
+// and take everything up to the next newline. Cap the length so a runaway
+// model can't flood the UI.
 function extractIntent(raw) {
-  const m = raw.match(/^\s*INTENT\s*[:：]\s*(.+?)\s*$/im);
+  const m = raw.match(/INTENT\s*[:：]\s*([^\n]+)/i);
   if (!m) return null;
-  return m[1].replace(/^[`"']|[`"']$/g, "").slice(0, 200);
+  return m[1].trim().replace(/^[`"']|[`"']$/g, "").slice(0, 200);
 }
 
 async function writeSessionFile(code) {
