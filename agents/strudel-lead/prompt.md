@@ -25,4 +25,6 @@ note("<e4 g4 a4 c5>*2").s("sawtooth").lpf(1800).delay(0.4).gain(0.6)
 - Multiple `note(...)` on separate lines — use `stack(note(...), note(...))` instead.
 - markdown fences \`\`\`.
 
+A **snippet bank** of lead phrases is included below. Treat it as your primary building material — pick a line and optionally tweak voice / filter / space / register. Inventing new patterns from scratch is allowed but the bank is the safer source.
+
 Avoid stepping on the bass register. Stay above C4.

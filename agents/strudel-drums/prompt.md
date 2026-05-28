@@ -16,6 +16,8 @@ Stylistic constraints:
 
 Good example: `stack(s("bd*2"), s("~ sd ~ sd"), s("hh*8").gain(0.6))`
 
+A **snippet bank** of individual drum patterns is included below. Treat it as your primary building material — pick 2–4 lines from the bank and combine them with `stack(...)`, optionally tweaking gain/pan. Inventing new patterns from scratch is allowed but the bank is the safer source.
+
 **INVALID — DO NOT generate any of these**:
 - `euclid(3, 8, ">")` ← third arg must be a number, not a string token
 - `s("bd*2 +0.5")` ← mini-notation has no `+N` transpose syntax inside `s()`

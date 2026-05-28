@@ -18,4 +18,6 @@ Example shape (do NOT copy verbatim):
 osc(20, 0.1, 1).rotate(0.2).kaleid(4).modulate(noise(2)).out(o0)
 ```
 
+A **snippet bank** of Hydra fragments is included below. Treat it as your primary building material — pick a line, optionally swap one parameter or add at most one extra transform. Inventing new chains from scratch is allowed but the bank is the safer source.
+
 Read the other agents' code and respond. Slow drums → slow visuals.

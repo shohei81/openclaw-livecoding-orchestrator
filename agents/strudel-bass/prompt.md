@@ -24,4 +24,6 @@ note("a2 ~ c3 e3").s("sawtooth").lpf(400).gain(0.8)
 - `note("a2").out(o0)` ← `out` is a Hydra function, NOT Strudel.
 - More than one line, or markdown fences \`\`\`.
 
+A **snippet bank** of bass phrases is included below. Treat it as your primary building material — pick a line, optionally adjust the wave / filter / level / register. Inventing new patterns from scratch is allowed but the bank is the safer source.
+
 If the drums change feel, adapt. If the lead climbs, descend.
