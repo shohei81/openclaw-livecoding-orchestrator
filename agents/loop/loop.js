@@ -44,7 +44,7 @@ sub.on("message", async (channel, raw) => {
   if (msg.session && msg.session !== SESSION_ID) return;
 
   if (channel === "pattern.committed") {
-    peers[msg.agent] = msg.code;
+    peers[msg.agent] = { code: msg.code, intent: msg.intent || null };
     return;
   }
   if (channel === "bar.tick") {
@@ -70,6 +70,7 @@ async function cycle(bar) {
   const raw = await runOpenClawAgent(message);
   console.log(`[${AGENT_ID}] bar=${bar} openclaw returned in ${Date.now()-t0}ms (${raw.length} chars)`);
   const code = extractCode(raw);
+  const intent = extractIntent(raw);
 
   const v = await fetch(`${VALIDATOR_URL}/validate`, {
     method: "POST",
@@ -88,24 +89,32 @@ async function cycle(bar) {
 
   await writeSessionFile(code);
   currentCode = code;
-  console.log(`[${AGENT_ID}] bar=${bar} committed (${code.length} chars)`);
+  console.log(`[${AGENT_ID}] bar=${bar} committed (${code.length} chars)${intent ? ` intent="${intent}"` : ""}`);
   await pub.publish(
     "pattern.committed",
-    JSON.stringify({ session: SESSION_ID, agent: AGENT_ID, code, bar })
+    JSON.stringify({ session: SESSION_ID, agent: AGENT_ID, code, intent, bar })
   );
 }
 
 function buildPromptMessage(bar) {
   const peerLines = Object.entries(peers)
     .filter(([id]) => id !== AGENT_ID)
-    .map(([id, c]) => `--- ${id} ---\n${c}`)
-    .join("\n");
+    .map(([id, p]) => {
+      // Old runs stored peers[id] as a bare string; new runs store { code, intent }.
+      // Tolerate both during the transition.
+      const code = typeof p === "string" ? p : p?.code ?? "";
+      const intent = typeof p === "string" ? null : p?.intent ?? null;
+      return `--- ${id} ---${intent ? `\nintent: ${intent}` : ""}\n${code}`;
+    })
+    .join("\n\n");
   const self = currentCode ? `--- your previous code ---\n${currentCode}` : "(no previous code)";
   return [
     `bar: ${bar}`,
-    peerLines ? `other agents currently playing:\n${peerLines}` : "no other agents yet",
+    peerLines ? `other agents currently playing (intent + code):\n${peerLines}` : "no other agents yet",
     self,
-    `Write the next iteration of your part as ONE ${AGENT_ROLE === "hydra" ? "Hydra" : "Strudel"} expression. Output ONLY the code as ONE LINE. Do not write any prose, planning, reasoning, or explanation. No <thinking> blocks. No markdown. Just the raw single-line expression.`,
+    `Write the next iteration of your part. Output EXACTLY two lines:\n` +
+      `  Line 1: \`INTENT: <one short sentence — react to what the others said>\`\n` +
+      `  Line 2: ONE ${AGENT_ROLE === "hydra" ? "Hydra" : "Strudel"} expression on a single line. No prose, no markdown, no <thinking> blocks.`,
   ].join("\n\n");
 }
 
@@ -215,6 +224,16 @@ function extractCode(raw) {
     if (expr && (!best || expr.length > best.length)) best = expr;
   }
   return (best || s).trim();
+}
+
+// Agents are asked to prefix each response with `INTENT: <one short sentence>`
+// so we can show what they're thinking in the side chat. The line may appear
+// anywhere in a long reasoning blob (Gemini sometimes wraps it); we grab the
+// first match and cap the length so a runaway model can't flood the UI.
+function extractIntent(raw) {
+  const m = raw.match(/^\s*INTENT\s*[:：]\s*(.+?)\s*$/im);
+  if (!m) return null;
+  return m[1].replace(/^[`"']|[`"']$/g, "").slice(0, 200);
 }
 
 async function writeSessionFile(code) {

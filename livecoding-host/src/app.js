@@ -12,6 +12,34 @@ const panes = Object.fromEntries(
   [...document.querySelectorAll(".pane")].map((el) => [el.dataset.agent, el.querySelector("pre")])
 );
 
+// ---- Chat sidebar ----
+// Append-only log of each agent's INTENT line. Each commit yields one chat
+// line; never trimmed (a long session can scroll back).
+const AGENT_EMOJI = {
+  "strudel-drums": "🥁",
+  "strudel-bass": "🎸",
+  "strudel-lead": "🎹",
+  "hydra": "🌀",
+};
+const AGENT_SHORT = {
+  "strudel-drums": "drums",
+  "strudel-bass": "bass",
+  "strudel-lead": "lead",
+  "hydra": "hydra",
+};
+const chatLog = document.getElementById("chat-log");
+function appendChat(agent, intent) {
+  const li = document.createElement("li");
+  li.className = AGENT_SHORT[agent] || agent;
+  const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  li.innerHTML = `<span class="who">${AGENT_EMOJI[agent] || ""} ${AGENT_SHORT[agent] || agent}</span>` +
+                 `<span class="text"></span>` +
+                 `<span class="when">${time}</span>`;
+  li.querySelector(".text").textContent = intent;
+  chatLog.appendChild(li);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
 // ---- Strudel ----
 // Three Strudel agents share a single scheduler. Each agent owns a named
 // slot; we stack the live slots into one program and re-evaluate when any
@@ -183,8 +211,9 @@ function connect() {
     try { msg = JSON.parse(ev.data); } catch { return; }
 
     if (msg.type === "pattern.committed") {
-      const { agent, code } = msg;
+      const { agent, code, intent } = msg;
       if (panes[agent]) panes[agent].textContent = code;
+      if (intent) appendChat(agent, intent);
       if (agent === "hydra") {
         runHydra(code);
       } else if (agent in strudelSlots) {

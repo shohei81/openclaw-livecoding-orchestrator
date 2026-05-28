@@ -5,9 +5,10 @@
   <title>openclaw livecoding</title>
   <style>
     html, body { margin: 0; padding: 0; background: #000; color: #ddd; font-family: ui-monospace, monospace; }
-    #hydra { position: fixed; inset: 0; z-index: 0; }
+    /* Main 70% on the left; chat sidebar 30% on the right. */
+    #hydra { position: fixed; left: 0; top: 0; right: 30%; bottom: 0; z-index: 0; }
     #overlay {
-      position: fixed; inset: 0; z-index: 1; padding: 12px;
+      position: fixed; left: 0; top: 0; right: 30%; bottom: 0; z-index: 1; padding: 12px;
       display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 8px;
       pointer-events: none;
     }
@@ -18,7 +19,32 @@
     }
     .pane h3 { margin: 0 0 4px; font-size: 12px; color: #8cf; }
     .pane pre { margin: 0; white-space: pre-wrap; word-break: break-all; }
-    #status { position: fixed; bottom: 8px; left: 8px; z-index: 2; font-size: 11px; color: #6c6; pointer-events: none; }
+
+    /* Chat sidebar */
+    #chat {
+      position: fixed; right: 0; top: 0; width: 30%; bottom: 0; z-index: 2;
+      background: rgba(0,0,0,0.85); border-left: 1px solid #222;
+      display: flex; flex-direction: column;
+    }
+    #chat h2 { margin: 0; padding: 10px 12px; font-size: 11px; color: #8cf;
+      text-transform: uppercase; letter-spacing: 0.1em; border-bottom: 1px solid #222; }
+    #chat-log {
+      list-style: none; margin: 0; padding: 8px 12px; flex: 1; overflow-y: auto;
+      font-size: 12px; line-height: 1.5;
+    }
+    #chat-log li {
+      margin: 6px 0; padding: 6px 8px; border-radius: 4px;
+      background: rgba(255,255,255,0.03); border-left: 2px solid #444;
+    }
+    #chat-log li .who { color: #8cf; font-weight: bold; margin-right: 6px; }
+    #chat-log li .when { color: #555; font-size: 10px; margin-left: 6px; }
+    #chat-log li .text { color: #ddd; }
+    #chat-log li.drums { border-left-color: #f88; }
+    #chat-log li.bass  { border-left-color: #8f8; }
+    #chat-log li.lead  { border-left-color: #ff8; }
+    #chat-log li.hydra { border-left-color: #8af; }
+
+    #status { position: fixed; bottom: 8px; left: 8px; z-index: 3; font-size: 11px; color: #6c6; pointer-events: none; }
     #start-overlay {
       position: fixed; inset: 0; z-index: 10;
       display: flex; align-items: center; justify-content: center;
@@ -29,18 +55,22 @@
       text-align: center; font-size: 14px; color: #ddd;
     }
     #start-overlay .big { font-size: 18px; color: #fff; margin-bottom: 8px; }
-    #diag { position: fixed; top: 8px; right: 8px; z-index: 2; font-size: 11px; color: #8cf;
+    #diag { position: fixed; top: 8px; left: 8px; z-index: 3; font-size: 11px; color: #8cf;
       background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 4px; pointer-events: none; }
   </style>
 </head>
 <body>
   <canvas id="hydra"></canvas>
   <div id="overlay">
-    <div class="pane" data-agent="strudel-drums"><h3>strudel-drums</h3><pre></pre></div>
-    <div class="pane" data-agent="strudel-bass"><h3>strudel-bass</h3><pre></pre></div>
-    <div class="pane" data-agent="strudel-lead"><h3>strudel-lead</h3><pre></pre></div>
-    <div class="pane" data-agent="hydra"><h3>hydra</h3><pre></pre></div>
+    <div class="pane" data-agent="strudel-drums"><h3>strudel-drums 🥁</h3><pre></pre></div>
+    <div class="pane" data-agent="strudel-bass"><h3>strudel-bass 🎸</h3><pre></pre></div>
+    <div class="pane" data-agent="strudel-lead"><h3>strudel-lead 🎹</h3><pre></pre></div>
+    <div class="pane" data-agent="hydra"><h3>hydra 🌀</h3><pre></pre></div>
   </div>
+  <aside id="chat">
+    <h2>session chat</h2>
+    <ul id="chat-log"></ul>
+  </aside>
   <div id="status">connecting…</div>
   <div id="diag">audio: ? | hydra: ?</div>
   <div id="start-overlay">
