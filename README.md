@@ -2,6 +2,12 @@
 
 Experimental repo. **Run four [OpenClaw](https://github.com/openclaw/openclaw) gateways in parallel via docker compose to orchestrate a local Strudel + Hydra live-coding session.** Each agent is its own OpenClaw Gateway container. The LLM is **Google Gemini 2.5 Flash**.
 
+## Demo
+
+https://github.com/shohei81/openclaw-livecoding-orchestrator/raw/main/docs/demo.mov
+
+(30s recording: four agents jamming, with their intent posted live in the right-side chat.)
+
 ## Architecture
 
 ```
