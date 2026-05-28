@@ -4,7 +4,11 @@ Experimental repo. **Run four [OpenClaw](https://github.com/openclaw/openclaw) g
 
 ## Demo
 
-https://github.com/shohei81/openclaw-livecoding-orchestrator/raw/main/docs/demo.mp4
+
+
+https://github.com/user-attachments/assets/00cc6f6e-f309-4d0e-83a5-5c1feda4f1eb
+
+
 
 (30s recording: four agents jamming, with their intent posted live in the right-side chat.)
 
